@@ -1,0 +1,123 @@
+<html>
+<head>
+<script src="https://unpkg.com/vue/dist/vue.js"></script>
+<script src="//cdn.jsdelivr.net/npm/pouchdb@7.1.1/dist/pouchdb.min.js"></script>
+</head>
+
+<body>
+<div id="example">
+  <form action="javascript:void(0);">
+  <button v-on:click="dosomething">Randomise</button>
+  {{ counter }} {{ message }}  {{ outmessage }}
+  <br><br>
+  <input type="text" id="randout" name="randout">
+  <br><br>
+  <input type="text" id="sync_mess" name="sync-mess" >
+
+  </form>
+</div>
+
+<script>
+
+var object = {
+  message: 'Hello world!',
+  counter: 0,
+  outmessage: ''
+}
+let pouchDbSyncActiveEvent = false
+let pouchDbSyncChangeEvent = false
+var db = new PouchDB('edrandodatabase')
+var remoteDB = new PouchDB('https://admin:Fajara2017@stats4.mrc.gm:6984/edrandodatabase')
+
+db.info().then(function (info) {
+  console.log(info);
+})
+//document.getElementById("sync_mess").setAttribute('value','Currently syncing to remote database.');
+db.sync(remoteDB,{live: true,retry: true}).on('active', (change) => {
+
+pouchDbSyncActiveEvent = true
+
+})
+.on('change', (change) => {
+
+pouchDbSyncChangeEvent = true
+
+})
+.on('paused', (info) => {
+
+if(pouchDbSyncActiveEvent == true && pouchDbSyncChangeEvent == false){
+
+  document.getElementById("sync_mess").setAttribute('value','Error');
+
+}
+else {
+
+  document.getElementById("sync_mess").setAttribute('value','Currently syncing to remote database.');
+
+}
+
+pouchDbSyncActiveEvent = false
+pouchDbSyncChangeEvent = false
+
+})
+new Vue({
+  el: '#example',
+  data: object,db,remoteDB,
+  methods: {
+    dosomething: function (event) {
+      var dummy='';
+      var dumID="1";
+      this.counter += 1;
+      this.message = "blat";
+      db.info().then(function (info) {
+      console.log(info);
+      })
+      dumID=this.counter.toString();
+      //this.outmessage=dumID
+      console.log(dumID)
+      db.get(dumID)
+      .then(function (doc) {
+        var t = JSON.parse(JSON.stringify(doc));
+        document.getElementById("randout").setAttribute('value',t['groupof']);
+        console.log(JSON.stringify(doc));
+       })
+
+        db.get(dumID).then((doc) => {
+        doc.allocated = "yes";
+        return db.put(doc);    
+        }).then(() => {
+        return db.get(dumID);
+        }).then((doc) => {
+        console.log(doc);
+        }).catch((err) => {
+        console.error(err);
+        });
+
+
+
+      db
+     .get(dumID)
+     .then(function(doc) {
+       console.log(doc)
+     })
+     .catch(function (err) {
+      console.log(err)
+     })
+     //db.sync(remoteDB,{live: true,retry: true}); // sync the databases in both directions
+    }
+
+  }
+})
+function syncError() {
+  document.getElementById("sync_mess").setAttribute('value','Error syncing to remote database. Data will continue saving locally until connection is re-established.');
+}
+
+</script>
+
+
+
+
+</body>
+
+</html>
+
